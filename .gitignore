@@ -6,6 +6,8 @@ node_modules/
 # Expo
 .expo/
 .expo-shared/
+android/
+ios/
 dist/
 web-build/
 expo-env.d.ts
@@ -35,5 +37,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Firebase key ignore
+/backend/serviceAccountKey.json
 
 app-example
