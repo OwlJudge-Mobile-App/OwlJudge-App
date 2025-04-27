@@ -8,7 +8,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  ImageBackground,
 } from "react-native";
+import Header from "@/components/Header";
+import RegisterInput from "@/components/RegisterInput";
+import { Fonts } from "@/constants/Fonts";
 
 const RegisterScreen = () => {
   const [firstName, setFirstName] = useState("");
@@ -33,73 +37,70 @@ const RegisterScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Owl Judge - Sign Up</Text>
+    <ImageBackground
+      source={require("../assets/images/background-img.jpg")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Header title={"Owl Judge"} />
 
-      <TextInput
-        placeholder="First Name"
-        style={styles.input}
-        value={firstName}
-        onChangeText={setFirstName}
-      />
-      <TextInput
-        placeholder="Last Name"
-        style={styles.input}
-        value={lastName}
-        onChangeText={setLastName}
-      />
-      <TextInput
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        placeholder="Address"
-        style={styles.input}
-        value={address}
-        onChangeText={setAddress}
-      />
-      <TextInput
-        placeholder="Phone"
-        style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-      />
-      <TextInput
-        placeholder="Password"
-        style={styles.input}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TextInput
-        placeholder="Confirm Password"
-        style={styles.input}
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
+        <RegisterInput
+          label="First Name"
+          value={firstName}
+          onChangeText={setFirstName}
+        />
+        <RegisterInput
+          label="Last Name"
+          value={lastName}
+          onChangeText={setLastName}
+        />
+        <RegisterInput
+          label="Email Address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <RegisterInput label="Phone" value={phone} onChangeText={setPhone} />
+        <RegisterInput
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={true}
+        />
+        <RegisterInput
+          label="Confirm Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={true}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleRegister}>
+          <Text style={styles.buttonText}>Sign Up</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.navigate("/Login")}>
-        <Text style={styles.linkText}>Already have an account? Log In</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity onPress={() => router.navigate("/Login")}>
+          <Text style={styles.linkText}>Already have an account? Log In</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </ImageBackground>
   );
 };
 
 export default RegisterScreen;
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    justifyContent: "center",
+  },
   container: {
     flexGrow: 1,
     justifyContent: "center",
+    marginHorizontal: 30,
     paddingHorizontal: 30,
-    paddingVertical: 20,
+    marginVertical: 20,
+    borderRadius: 10,
+    backgroundColor: "#D8D8D7",
   },
   title: {
     fontSize: 28,
@@ -120,15 +121,21 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 8,
     marginBottom: 10,
+    marginTop: 10,
   },
   buttonText: {
     textAlign: "center",
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 16,
+    fontFamily: Fonts.IrishGroverRegular,
   },
   linkText: {
     textAlign: "center",
+    fontSize: 16,
     marginTop: 10,
-    color: "#28A745",
+    color: "#828282",
+    marginBottom: 10,
+    fontFamily: Fonts.IrishGroverRegular,
   },
 });

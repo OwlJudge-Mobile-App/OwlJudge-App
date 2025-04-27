@@ -1,4 +1,3 @@
-// screens/LoginScreen.js
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import {
@@ -11,6 +10,8 @@ import {
   ImageBackground,
 } from "react-native";
 import { Fonts } from "@/constants/Fonts";
+import Header from "@/components/Header";
+import LoginInput from "@/components/LoginInput";
 
 const LoginScreen = () => {
   const router = useRouter();
@@ -29,27 +30,18 @@ const LoginScreen = () => {
       resizeMode="cover"
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>Owl Judge</Text>
-        </View>
-        <TextInput
-          placeholder="Email"
-          style={styles.input}
+        <Header title={"Owl Judge"} />
+        <LoginInput
           value={email}
           onChangeText={setEmail}
+          placeholder="Email address"
+          iconSource={require("../assets/images/email-icon.webp")}
         />
-
-        <TextInput
-          placeholder="Password"
-          style={styles.input}
-          secureTextEntry
+        <LoginInput
           value={password}
           onChangeText={setPassword}
+          placeholder="Password"
+          iconSource={require("../assets/images/password-148.png")}
         />
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
@@ -80,42 +72,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#D8D8D7",
   },
-  header: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-  },
-  logo: {
-    width: 80,
-    height: 100,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-    fontFamily: Fonts.IrishGroverRegular,
-  },
-  input: {
-    height: 50,
-    borderColor: "#C7C6C5",
-    backgroundColor: "#C7C6C5",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 20,
-  },
   button: {
     backgroundColor: "#4CA164",
-    paddingVertical: 15,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 10,
+    marginBottom: 30,
+    marginTop: 10,
   },
   buttonText: {
     textAlign: "center",
+    fontSize: 20,
     color: "#fff",
     fontWeight: "bold",
+    fontFamily: Fonts.IrishGroverRegular,
   },
   linkText: {
+    fontFamily: Fonts.IrishGroverRegular,
+    fontSize: 18,
+    fontWeight: "700",
     textAlign: "center",
     marginTop: 10,
     color: "#828282",
