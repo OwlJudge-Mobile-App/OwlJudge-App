@@ -11,6 +11,7 @@ const serviceAccount = require("./serviceAccountKey.json"); // path to your Fire
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
+  storageBucket: 'YOUR_FIREBASE_STORAGE_BUCKET_URL',  // Firebase storage bucket URL
 });
 
 const db = admin.firestore();
@@ -427,6 +428,101 @@ app.post('/create-event', async (req, res) => {
   } catch (error) {
     console.error('Error creating event:', error);
     res.status(500).json({ message: 'Error creating event' });
+  }
+});
+
+// Route to get all projects for an event
+app.get('/projects', async (req, res) => {
+  const eventId = req.query.eventId;  // Event ID passed as a query parameter
+
+  try {
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Fetch projects under the event
+    const projectsRef = eventRef.collection('projects');
+    const projectSnapshot = await projectsRef.get();
+
+    if (projectSnapshot.empty) {
+      return res.status(404).json({ message: 'No projects found for this event' });
+    }
+
+    const projects = projectSnapshot.docs.map(doc => {
+      const projectData = doc.data();
+      return {
+        id: doc.id,
+        project_name: projectData.project_name,
+        grade: projectData.grade,
+        status: projectData.status,
+        submission_date: projectData.submission_date.toDate(),
+        criteria: projectData.criteria,
+      };
+    });
+
+    res.status(200).json({ projects });
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ message: 'Error retrieving projects' });
+  }
+});
+
+// Route to delete a project by its ID
+app.delete('/delete-project', async (req, res) => {
+  const { eventId, projectId } = req.body;
+
+  try {
+    const projectRef = db.collection('events').doc(eventId).collection('projects').doc(projectId);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Delete the project
+    await projectRef.delete();
+
+    res.status(200).json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ message: 'Error deleting project' });
+  }
+});
+
+// Route to add a new project to an event
+app.post('/add-project', async (req, res) => {
+  const { eventId, projectName, category, participantName, telephone, description, link, grade } = req.body;
+
+  try {
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Add new project to Firestore
+    const newProjectRef = eventRef.collection('projects').doc();  // Generate a new project ID
+    await newProjectRef.set({
+      project_name: projectName,
+      category: category,
+      participant_name: participantName,
+      telephone: telephone,
+      description: description,
+      link: link,
+      grade: grade,
+      status: "Not Published",  // Default status
+      submission_date: admin.firestore.Timestamp.now(),
+      criteria: "Criteria to be defined",  // Placeholder for criteria
+    });
+
+    res.status(201).json({ message: 'Project created successfully', projectId: newProjectRef.id });
+  } catch (error) {
+    console.error('Error creating project:', error);
+    res.status(500).json({ message: 'Error creating project' });
   }
 });
 
