@@ -399,6 +399,37 @@ app.post('/update-profile', upload.single('profile_picture'), async (req, res) =
   }
 });
 
+// Route to create a new event
+app.post('/create-event', async (req, res) => {
+  const { eventName, startDate, endDate, location, numParticipants, judges, criteria } = req.body;
+
+  // Validate required fields
+  if (!eventName || !startDate || !endDate || !location || numParticipants == null || !judges || !criteria) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  try {
+    // Create a new event in Firestore
+    const eventRef = db.collection('events').doc();  // Generate a new event ID automatically
+    await eventRef.set({
+      event_name: eventName,
+      start_date: admin.firestore.Timestamp.fromDate(new Date(startDate)),
+      end_date: admin.firestore.Timestamp.fromDate(new Date(endDate)),
+      location: location,
+      num_participants: numParticipants,
+      judges: judges,  // judges should be an array of judge IDs or names
+      criteria: criteria,
+      created_at: admin.firestore.Timestamp.now(),
+      updated_at: admin.firestore.Timestamp.now(),
+    });
+
+    res.status(201).json({ message: 'Event created successfully', eventId: eventRef.id });
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ message: 'Error creating event' });
+  }
+});
+
 // Start the server
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
