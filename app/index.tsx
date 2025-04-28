@@ -1,5 +1,5 @@
 // app/layout.tsx
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 import {
   useFonts,
   IrishGrover_400Regular,
@@ -22,5 +22,5 @@ export default function RootLayout() {
     return null; // Show nothing (or you can create a custom loading spinner later)
   }
 
-  return <Stack />;
+  return <Redirect href={"/Login"} />;
 }

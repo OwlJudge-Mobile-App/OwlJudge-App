@@ -44,5 +44,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderColor: "#C7C6C5",
     backgroundColor: "#C7C6C5",
+    fontFamily: Fonts.IrishGroverRegular,
   },
 });
