@@ -13,7 +13,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const app = express();
-const port = 3000; // Backend server running on port 5000
+const port = 5000; // Backend server running on port 5000
 
 app.use(
   cors({
@@ -77,6 +77,80 @@ app.post("/signup", async (req, res) => {
     console.error("Error creating user:", error);
     res.status(500).json({ message: "Error during signup. Please try again." });
   }
+});
+
+// Middleware to get the user's first name (from Firebase Auth)
+async function getUserFirstName(userId) {
+  try {
+    const userRecord = await admin.auth().getUser(userId);
+    return userRecord.displayName.split(' ')[0]; // Extract the first name
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return 'Guest'; // Default name if there's an issue
+  }
+}
+
+// Route to get events and display the first name at the top
+app.get('/home', async (req, res) => {
+  const userId = req.query.userId;  // Assuming the user ID is passed in the query
+
+  // Get the user's first name
+  const firstName = await getUserFirstName(userId);
+
+  // Fetch all events from Firestore
+  const eventsRef = db.collection('events');
+  const querySnapshot = await eventsRef.get();
+
+  if (querySnapshot.empty) {
+    return res.status(404).json({ message: 'No events found' });
+  }
+
+  const events = querySnapshot.docs.map(doc => {
+    const eventData = doc.data();
+    const participantCount = eventData.participants.length;  // Assuming participants are stored as an array
+    return {
+      id: doc.id,
+      event_name: eventData.event_name,
+      status: eventData.status,
+      participants: participantCount,
+    };
+  });
+
+  // Send response with the user's first name and the events data
+  res.status(200).json({
+    message: `Welcome back, ${firstName}`,
+    events: events,
+  });
+});
+
+// Route to search events by name or status
+app.get('/search', async (req, res) => {
+  const { searchTerm } = req.query;  // User-provided search term (either event name or status)
+
+  // Query Firestore for events that match the search term in either event_name or status
+  const eventsRef = db.collection('events');
+  const querySnapshot = await eventsRef
+    .where('event_name', '>=', searchTerm)
+    .where('event_name', '<=', searchTerm + '\uf8ff')
+    .get();
+
+  if (querySnapshot.empty) {
+    return res.status(404).json({ message: 'No events found matching your search' });
+  }
+
+  const events = querySnapshot.docs.map(doc => {
+    const eventData = doc.data();
+    const participantCount = eventData.participants.length;  // Get participant count
+    return {
+      id: doc.id,
+      event_name: eventData.event_name,
+      status: eventData.status,
+      participants: participantCount,
+    };
+  });
+
+  // Return filtered events
+  res.status(200).json({ events });
 });
 
 // Start the server
