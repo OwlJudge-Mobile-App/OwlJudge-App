@@ -206,6 +206,106 @@ app.get('/event-details', async (req, res) => {
   }
 });
 
+// Route to get event and project details
+app.get('/project-details', async (req, res) => {
+  const { eventId, projectId } = req.query;  // Event and Project ID passed as query parameters
+
+  try {
+    // Fetch the event data (name, ID, start/end dates)
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const eventData = eventDoc.data();
+
+    // Fetch the project data
+    const projectRef = eventRef.collection('projects').doc(projectId);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const projectData = projectDoc.data();
+
+    // Send the event and project data as response
+    res.status(200).json({
+      event_name: eventData.event_name,
+      event_id: eventId,
+      start_date: eventData.start_date.toDate(),
+      end_date: eventData.end_date.toDate(),
+      project: {
+        project_name: projectData.project_name,
+        category: projectData.category,
+        participant_name: projectData.participant_name,
+        telephone: projectData.telephone,
+        description: projectData.description,
+        link: projectData.link,
+        grade: projectData.grade,
+        status: projectData.status,
+        submitted: projectData.submitted,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching project details:', error);
+    res.status(500).json({ message: 'Error retrieving project details' });
+  }
+});
+
+// Route to publish the project
+app.post('/publish', async (req, res) => {
+  const { eventId, projectId } = req.body;  // Event and Project ID passed in the request body
+
+  try {
+    // Fetch the project document
+    const projectRef = db.collection('events').doc(eventId).collection('projects').doc(projectId);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Update the project status to "Published"
+    await projectRef.update({
+      status: 'Published',
+    });
+
+    res.status(200).json({ message: 'Project published successfully' });
+  } catch (error) {
+    console.error('Error publishing project:', error);
+    res.status(500).json({ message: 'Error publishing project' });
+  }
+});
+
+// Route to submit the project
+app.post('/submit', async (req, res) => {
+  const { eventId, projectId, grade } = req.body;  // Event and Project ID along with the grade
+
+  try {
+    // Fetch the project document
+    const projectRef = db.collection('events').doc(eventId).collection('projects').doc(projectId);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Update the project with the grade and mark it as submitted
+    await projectRef.update({
+      grade: grade,
+      submitted: true,
+    });
+
+    res.status(200).json({ message: 'Project submitted successfully' });
+  } catch (error) {
+    console.error('Error submitting project:', error);
+    res.status(500).json({ message: 'Error submitting project' });
+  }
+});
+
 // Start the server
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
