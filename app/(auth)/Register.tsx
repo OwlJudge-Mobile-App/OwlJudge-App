@@ -16,7 +16,6 @@ import RegisterInput from "@/components/RegisterInput";
 import { Fonts } from "@/constants/Fonts";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/firebaseConfig";
-import axios from "axios";
 import api from "@/services/api";
 
 const RegisterScreen = () => {
@@ -117,7 +116,7 @@ const RegisterScreen = () => {
 
   return (
     <ImageBackground
-      source={require("../assets/images/background-img.jpg")}
+      source={require("../../assets/images/background-img.jpg")}
       style={styles.background}
       resizeMode="cover"
     >

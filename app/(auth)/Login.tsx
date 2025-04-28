@@ -31,6 +31,7 @@ const LoginScreen = () => {
         const user = userCredential.user;
         Alert.alert("Success", "Logged in successfully.");
         // Redirect to Home
+        router.replace("../(tabs)/Home");
       })
       .catch((error) => {
         const errorCode = error.code;
@@ -44,7 +45,7 @@ const LoginScreen = () => {
 
   return (
     <ImageBackground
-      source={require("../assets/images/background-img.jpg")}
+      source={require("../../assets/images/background-img.jpg")}
       style={styles.background}
       resizeMode="cover"
     >
@@ -54,13 +55,13 @@ const LoginScreen = () => {
           value={email}
           onChangeText={setEmail}
           placeholder="Email address"
-          iconSource={require("../assets/images/email-icon.webp")}
+          iconSource={require("../../assets/images/email-icon.webp")}
         />
         <LoginInput
           value={password}
           onChangeText={setPassword}
           placeholder="Password"
-          iconSource={require("../assets/images/password-148.png")}
+          iconSource={require("../../assets/images/password-148.png")}
           secureTextEntry={true}
         />
 
