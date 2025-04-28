@@ -153,6 +153,59 @@ app.get('/search', async (req, res) => {
   res.status(200).json({ events });
 });
 
+// Route to get event and project details
+app.get('/event-details', async (req, res) => {
+  const eventId = req.query.eventId;  // Event ID passed as a query parameter
+
+  try {
+    // Fetch the event data (name, ID, start/end dates)
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const eventData = eventDoc.data();
+
+    // Fetch the list of projects associated with the event
+    const projectsRef = eventRef.collection('projects');
+    const projectSnapshot = await projectsRef.get();
+
+    if (projectSnapshot.empty) {
+      return res.status(404).json({ message: 'No projects found for this event' });
+    }
+
+    const projects = projectSnapshot.docs.map(doc => {
+      const projectData = doc.data();
+
+      // Determine the color based on the status of the project
+      const statusColor = projectData.status === 'Published' ? 'green' : 'red';
+
+      return {
+        id: doc.id,
+        project_name: projectData.project_name,
+        grade: projectData.grade,
+        status: projectData.status,  // "Published" or "Not Published"
+        statusColor: statusColor,    // Green or Red for the frontend
+        submission_date: projectData.submission_date.toDate(),
+      };
+    });
+
+    // Send the response with event data and projects
+    res.status(200).json({
+      event_name: eventData.event_name,
+      event_id: eventId,
+      start_date: eventData.start_date.toDate(),
+      end_date: eventData.end_date.toDate(),
+      projects: projects,
+    });
+  } catch (error) {
+    console.error('Error fetching event details:', error);
+    res.status(500).json({ message: 'Error retrieving event details' });
+  }
+});
+
 // Start the server
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
