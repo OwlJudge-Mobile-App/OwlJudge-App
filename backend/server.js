@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
+const multer = require('multer');
+const path = require('path');
 
 // Initialize Firebase Admin SDK
 const serviceAccount = require("./serviceAccountKey.json"); // path to your Firebase service account key
@@ -13,6 +15,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const app = express();
+const storage = admin.storage().bucket();  // Firebase storage bucket reference
 const port = 5000; // Backend server running on port 5000
 
 app.use(
@@ -303,6 +306,96 @@ app.post('/submit', async (req, res) => {
   } catch (error) {
     console.error('Error submitting project:', error);
     res.status(500).json({ message: 'Error submitting project' });
+  }
+});
+
+// Multer setup for handling image uploads
+const storageConfig = multer.memoryStorage();  // Store files in memory
+const upload = multer({
+  storage: storageConfig,
+  fileFilter: (req, file, cb) => {
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    if (fileExtension === '.jpg' || fileExtension === '.jpeg' || fileExtension === '.png') {
+      cb(null, true);  // Accept image files
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  },
+});
+
+// Route to get user details
+app.get('/profile', async (req, res) => {
+  const userId = req.query.userId;  // User ID passed as a query parameter
+
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    res.status(200).json({
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      telephone: userData.telephone,
+      email: userData.email,
+      role: userData.role,
+      profile_picture_url: userData.profile_picture_url || '',
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Error retrieving user profile' });
+  }
+});
+
+// Route to update user details
+app.post('/update-profile', upload.single('profile_picture'), async (req, res) => {
+  const { userId, firstName, lastName, telephone, email, role } = req.body;
+  const profilePicture = req.file;
+
+  try {
+    // Upload the profile picture to Firebase Storage if a new one is provided
+    let profilePictureUrl = '';
+    if (profilePicture) {
+      const fileName = `${userId}_${Date.now()}${path.extname(profilePicture.originalname)}`;
+      const file = storage.file(fileName);
+      const stream = file.createWriteStream({
+        metadata: {
+          contentType: profilePicture.mimetype,
+        },
+      });
+
+      stream.on('error', (err) => {
+        console.error('Error uploading profile picture:', err);
+        return res.status(500).json({ message: 'Error uploading profile picture' });
+      });
+
+      stream.on('finish', async () => {
+        profilePictureUrl = `https://storage.googleapis.com/${storage.name}/${fileName}`;  // Get the public URL of the uploaded file
+        await file.makePublic();  // Make the file publicly accessible
+      });
+
+      stream.end(profilePicture.buffer);
+    }
+
+    // Update user data in Firestore
+    const userRef = db.collection('users').doc(userId);
+    await userRef.update({
+      first_name: firstName,
+      last_name: lastName,
+      telephone: telephone,
+      email: email,
+      role: role,
+      profile_picture_url: profilePictureUrl,  // Update the profile picture URL if it was uploaded
+      updated_at: admin.firestore.Timestamp.now(),
+    });
+
+    res.status(200).json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ message: 'Error updating profile' });
   }
 });
 
