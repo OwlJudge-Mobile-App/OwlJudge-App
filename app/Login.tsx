@@ -8,19 +8,38 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
+  Alert,
 } from "react-native";
 import { Fonts } from "@/constants/Fonts";
 import Header from "@/components/Header";
 import LoginInput from "@/components/LoginInput";
+import api from "@/services/api";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/firebaseConfig";
 
 const LoginScreen = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    // Handling connection to backend API
     console.log("Login with", email, password);
-    // Later: connect to backend API
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Signed in
+        const user = userCredential.user;
+        Alert.alert("Success", "Logged in successfully.");
+        // Redirect to Home
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        Alert.alert("Unsuccessful", `Invalid credentials.`);
+        console.log(
+          `Something went wrong. Error ${errorCode}: ${errorMessage}`
+        );
+      });
   };
 
   return (
@@ -42,6 +61,7 @@ const LoginScreen = () => {
           onChangeText={setPassword}
           placeholder="Password"
           iconSource={require("../assets/images/password-148.png")}
+          secureTextEntry={true}
         />
 
         <TouchableOpacity style={styles.button} onPress={handleLogin}>

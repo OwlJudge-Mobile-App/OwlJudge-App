@@ -9,12 +9,18 @@ import {
   StyleSheet,
   ScrollView,
   ImageBackground,
+  Alert,
 } from "react-native";
 import Header from "@/components/Header";
 import RegisterInput from "@/components/RegisterInput";
 import { Fonts } from "@/constants/Fonts";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/firebaseConfig";
+import axios from "axios";
+import api from "@/services/api";
 
 const RegisterScreen = () => {
+  const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,7 +30,6 @@ const RegisterScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleRegister = () => {
-    const router = useRouter();
     console.log("Register with", {
       firstName,
       lastName,
@@ -33,7 +38,81 @@ const RegisterScreen = () => {
       phone,
       password,
     });
-    // Later: connect to backend API
+
+    // Input validation
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !phone ||
+      !password ||
+      !confirmPassword
+    ) {
+      Alert.alert("Error", "All fields must be filled.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords are not matching.");
+      return;
+    }
+    // Registering user to Firebase Auth.
+    createUserWithEmailAndPassword(auth, email, password)
+      .then(async (userCredential) => {
+        // Signed up
+        const user = userCredential.user;
+        console.log("User registered: ", user.uid);
+
+        // Save extra profile data in Firestore
+        try {
+          const response = await api.post("/signup", {
+            id: user.uid,
+            firstName,
+            lastName,
+            email,
+            phone,
+          });
+
+          if (response.status === 201) {
+            console.log(response.data);
+            Alert.alert("Success", "Registered successfully.");
+          } else {
+            Alert.alert(
+              "Error",
+              `Something went wrong. Error ${response.status}: ${response.data.message}`
+            );
+          }
+        } catch (error: any) {
+          console.error("Registration error", error);
+          // Better error handling
+          if (error.response) {
+            // The server responded with a status code outside of 2xx range
+            Alert.alert(
+              "Error",
+              `Server error: ${error.response.status} - ${
+                error.response.data?.message || "Unknown error"
+              }`
+            );
+          } else if (error.request) {
+            // The request was made but no response was received
+            Alert.alert(
+              "Error",
+              "No response from server. Please try again later."
+            );
+          } else {
+            // Something happened in setting up the request
+            Alert.alert("Error", `Request failed: ${error.message}`);
+          }
+        }
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        Alert.alert(
+          "Error",
+          `Something went wrong. Error ${errorCode}: ${errorMessage}`
+        );
+      });
   };
 
   return (

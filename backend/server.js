@@ -1,10 +1,11 @@
 // Import necessary libraries
-const express = require('express');
-const bodyParser = require('body-parser');
-const admin = require('firebase-admin');
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const admin = require("firebase-admin");
 
 // Initialize Firebase Admin SDK
-const serviceAccount = require('./serviceAccountKey.json');  // path to your Firebase service account key
+const serviceAccount = require("./serviceAccountKey.json"); // path to your Firebase service account key
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -12,13 +13,21 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const app = express();
-const port = 5000;  // Backend server running on port 5000
+const port = 3000; // Backend server running on port 5000
+
+app.use(
+  cors({
+    origin: "*", // During development, allow all origins
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Middleware to parse incoming request bodies
 app.use(bodyParser.json());
 
 // Firebase Authentication logic
-app.post('/login', async (req, res) => {
+app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -31,41 +40,25 @@ app.post('/login', async (req, res) => {
       const token = await admin.auth().createCustomToken(userRecord.uid); // Firebase custom token
 
       // Respond with the token
-      res.status(200).json({ message: 'Login successful', token });
+      res.status(200).json({ message: "Login successful", token });
     } else {
-      res.status(401).json({ message: 'Invalid credentials' });
+      res.status(401).json({ message: "Invalid credentials" });
     }
   } catch (error) {
-    console.error('Error during login:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error during login:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 // Sign Up Route
-app.post('/signup', async (req, res) => {
-  const { firstName, lastName, email, phone, password, confirmPassword } = req.body;
+app.post("/signup", async (req, res) => {
+  console.log("Hello World!");
 
-  // Input validation
-  if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
-    return res.status(400).json({ message: 'All fields are required' });
-  }
-
-  // Ensure password matches
-  if (password !== confirmPassword) {
-    return res.status(400).json({ message: 'Passwords do not match' });
-  }
+  const { id, firstName, lastName, email, phone } = req.body;
 
   try {
-    // Create user with Firebase Authentication
-    const userRecord = await admin.auth().createUser({
-      email: email,
-      password: password,  // Firebase Authentication handles the hashing internally
-      displayName: `${firstName} ${lastName}`,
-      phoneNumber: phone,
-    });
-
     // Save additional user details in Firestore
-    const userRef = db.collection('users').doc(userRecord.uid);  // Store the user's Firestore document using their UID
+    const userRef = db.collection("users").doc(id); // Store the user's Firestore document using their UID
     await userRef.set({
       firstName: firstName,
       lastName: lastName,
@@ -77,16 +70,16 @@ app.post('/signup', async (req, res) => {
 
     // Send a response back to the client
     res.status(201).json({
-      message: 'User created successfully!',
-      userId: userRecord.uid,
+      message: "User created successfully!",
+      userId: id,
     });
   } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ message: 'Error during signup. Please try again.' });
+    console.error("Error creating user:", error);
+    res.status(500).json({ message: "Error during signup. Please try again." });
   }
 });
 
 // Start the server
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
 });
