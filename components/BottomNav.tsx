@@ -14,7 +14,7 @@ export default function BottomNav() {
       <TouchableOpacity>
         <Image
           style={styles.navIcon}
-          source={require("../assets/images/edit-icon.png")}
+          source={require("../assets/images/icons8-account-100.png")}
         />
       </TouchableOpacity>
       <TouchableOpacity>
