@@ -1,7 +1,10 @@
 import BottomNav from "@/components/BottomNav";
 import { Fonts } from "@/constants/Fonts";
+import { auth } from "@/firebaseConfig";
+import api from "@/services/api";
+import axios from "axios";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -10,19 +13,46 @@ import {
   Image,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
-
-// Starting data. Will be further replaced by an api call.
-const events = [
-  { id: "1", title: "Event 1", status: "Ongoing", participants: 20 },
-  { id: "2", title: "Event 2", status: "Complete", participants: 20 },
-  { id: "3", title: "Event 3", status: "Not Started", participants: 20 },
-  { id: "4", title: "Event 4", status: "Canceled", participants: 20 },
-];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [firstName, setFirstName] = useState("");
+  const [events, setEvents] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+
+  const userId = auth.currentUser?.uid;
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      try {
+        const response = await api.get("/home", {
+          params: { userId: userId },
+        });
+        setFirstName(response.data.message);
+        console.log(firstName);
+
+        setEvents(response.data.events);
+      } catch (error: any) {
+        console.error("Failed to fetch home data", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHomeData();
+  }, []);
+
+  if (loading) {
+    return (
+      <ActivityIndicator
+        size={"large"}
+        style={{ flex: 1, justifyContent: "center" }}
+      />
+    );
+  }
 
   // change color based on event status
   const getStatusColor = (status: string) => {
@@ -43,10 +73,10 @@ export default function HomeScreen() {
   const renderEventCard = ({ item }: { item: (typeof events)[0] }) => (
     <TouchableOpacity
       style={styles.cardContainer}
-      onPress={() => router.navigate("/Event")}
+      onPress={() => router.push(`/Event?id=${item.id}`)}
     >
       <View style={styles.card}>
-        <Text style={styles.eventTitle}>{item.title}</Text>
+        <Text style={styles.eventTitle}>{item.event_name}</Text>
         <View style={styles.separator} />
         <Text style={styles.status}>
           Status:{" "}
@@ -63,11 +93,15 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+  const filteredEvents = events.filter((item) =>
+    item.event_name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
       {/* Top Section */}
       <View style={styles.topSection}>
-        <Text style={styles.welcomeText}>Welcome back, Roan</Text>
+        <Text style={styles.welcomeText}>Welcome back, {firstName}</Text>
         <View style={styles.searchBox}>
           <TextInput
             placeholder="Search"
@@ -85,7 +119,7 @@ export default function HomeScreen() {
       {/* Middle Section (Events) */}
       <View style={styles.eventsSection}>
         <FlatList
-          data={events}
+          data={filteredEvents}
           renderItem={renderEventCard}
           keyExtractor={(item) => item.id}
           numColumns={2}

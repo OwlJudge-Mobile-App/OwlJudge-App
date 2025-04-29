@@ -9,9 +9,10 @@ import {
   ProgressBarAndroid,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BottomNav from "@/components/BottomNav";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import api from "@/services/api";
 
 const projects = [
   { id: "1", name: "Project 1", grade: 0.5, published: true },
@@ -28,9 +29,34 @@ const projects = [
 export default function EventDetailsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const { id: eventId } = useLocalSearchParams(); // get eventId from URL
+  console.log(eventId);
+
+  const [eventData, setEventData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchEventDetails = async () => {
+      try {
+        const response = await api.get("/event-details", {
+          params: { eventId },
+        });
+
+        setEventData(response.data);
+        setProjects(response.data.projects);
+      } catch (error) {
+        console.error("Error fetching event details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEventDetails();
+  }, []);
 
   const filteredProjects = projects.filter((proj) =>
-    proj.name.toLowerCase().includes(search.toLowerCase())
+    proj.project_name.toLowerCase().includes(search.toLowerCase())
   );
 
   const renderProject = ({ item }: { item: (typeof projects)[0] }) => (
@@ -39,18 +65,14 @@ export default function EventDetailsScreen() {
         router.push({
           pathname: "/(tabs)/Project",
           params: {
-            name: item.name,
-            category: "Programming", // I will make it dynamic later
-            participant: "Roan Simo Masso",
-            phone: "4704399907",
-            description: "This is a sample project description...",
-            link: "https://www.youtube.com/watch?v=jKl0a__yCZE",
+            id: eventId,
+            project_id: item.id,
           },
         });
       }}
     >
       <View style={styles.projectRow}>
-        <Text style={[styles.cell, { flex: 2 }]}>{item.name}</Text>
+        <Text style={[styles.cell, { flex: 2 }]}>{item.project_name}</Text>
         <ProgressBarAndroid
           styleAttr="Horizontal"
           indeterminate={false}
@@ -62,7 +84,10 @@ export default function EventDetailsScreen() {
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: item.published ? "green" : "red" },
+              {
+                backgroundColor:
+                  item.published === "Published" ? "green" : "red",
+              },
             ]}
           />
         </View>
@@ -70,19 +95,30 @@ export default function EventDetailsScreen() {
     </TouchableOpacity>
   );
 
+  function formatDate(dateString: string) {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+  }
+
   return (
     <View style={styles.container}>
       {/* Top Info */}
       <View style={styles.topInfo}>
         <View>
-          <Text style={styles.eventTitle}>Event 1</Text>
-          <Text style={styles.eventId}>ID: Ev_0001</Text>
+          <Text style={styles.eventTitle}>{eventData?.event_name}</Text>
+          <Text style={styles.eventId}>ID: {eventData?.event_id}</Text>
         </View>
         <View>
-          <Text style={styles.eventDates}>From: 03/19/2025</Text>
-          <Text style={styles.eventDates}>- 03/24/2025</Text>
+          <Text style={styles.eventDates}>
+            From: {formatDate(eventData?.start_date)}
+          </Text>
+          <Text style={styles.eventDates}>
+            - {formatDate(eventData?.end_date)}
+          </Text>
         </View>
       </View>
+
       {/* Buttons */}
       <View style={styles.topButtons}>
         <TouchableOpacity style={styles.criteriaButton}>

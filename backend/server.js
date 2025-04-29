@@ -3,21 +3,21 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
-const multer = require('multer');
-const path = require('path');
+const multer = require("multer");
+const path = require("path");
 
 // Initialize Firebase Admin SDK
 const serviceAccount = require("./serviceAccountKey.json"); // path to your Firebase service account key
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: 'YOUR_FIREBASE_STORAGE_BUCKET_URL',  // Firebase storage bucket URL
+  storageBucket: "owl-judge-mobile-app.firebasestorage.app", // Firebase storage bucket URL
 });
 
 const db = admin.firestore();
 const app = express();
-const storage = admin.storage().bucket();  // Firebase storage bucket reference
-const port = 5000; // Backend server running on port 5000
+const storage = admin.storage().bucket(); // Firebase storage bucket reference
+const port = 3000; // Backend server running on port 5000
 
 app.use(
   cors({
@@ -86,65 +86,75 @@ app.post("/signup", async (req, res) => {
 // Middleware to get the user's first name (from Firebase Auth)
 async function getUserFirstName(userId) {
   try {
-    const userRecord = await admin.auth().getUser(userId);
-    return userRecord.displayName.split(' ')[0]; // Extract the first name
+    const userDoc = await db.collection("users").doc(userId).get();
+
+    if (!userDoc.exists) {
+      console.error("User not found for ID:", userId);
+      return null;
+    }
+
+    const userData = userDoc.data();
+    return userData.firstName || null;
   } catch (error) {
-    console.error('Error fetching user:', error);
-    return 'Guest'; // Default name if there's an issue
+    console.error("Error fetching user's first name:", error);
+    return null;
   }
 }
 
 // Route to get events and display the first name at the top
-app.get('/home', async (req, res) => {
-  const userId = req.query.userId;  // Assuming the user ID is passed in the query
+app.get("/home", async (req, res) => {
+  const userId = req.query.userId; // Assuming the user ID is passed in the query
 
   // Get the user's first name
   const firstName = await getUserFirstName(userId);
 
   // Fetch all events from Firestore
-  const eventsRef = db.collection('events');
-  const querySnapshot = await eventsRef.get();
+  const eventsRef = db.collection("events");
+  const querySnapshot = await eventsRef
+    .where("judgeIds", "array-contains", userId)
+    .get();
 
   if (querySnapshot.empty) {
-    return res.status(404).json({ message: 'No events found' });
+    return res.status(404).json({ message: "No events found" });
   }
 
-  const events = querySnapshot.docs.map(doc => {
+  const events = querySnapshot.docs.map((doc) => {
     const eventData = doc.data();
-    const participantCount = eventData.participants.length;  // Assuming participants are stored as an array
     return {
       id: doc.id,
-      event_name: eventData.event_name,
+      event_name: eventData.name,
       status: eventData.status,
-      participants: participantCount,
+      participants: eventData.projectCount,
     };
   });
 
   // Send response with the user's first name and the events data
   res.status(200).json({
-    message: `Welcome back, ${firstName}`,
+    message: firstName,
     events: events,
   });
 });
 
 // Route to search events by name or status
-app.get('/search', async (req, res) => {
-  const { searchTerm } = req.query;  // User-provided search term (either event name or status)
+app.get("/search", async (req, res) => {
+  const { searchTerm } = req.query; // User-provided search term (either event name or status)
 
   // Query Firestore for events that match the search term in either event_name or status
-  const eventsRef = db.collection('events');
+  const eventsRef = db.collection("events");
   const querySnapshot = await eventsRef
-    .where('event_name', '>=', searchTerm)
-    .where('event_name', '<=', searchTerm + '\uf8ff')
+    .where("event_name", ">=", searchTerm)
+    .where("event_name", "<=", searchTerm + "\uf8ff")
     .get();
 
   if (querySnapshot.empty) {
-    return res.status(404).json({ message: 'No events found matching your search' });
+    return res
+      .status(404)
+      .json({ message: "No events found matching your search" });
   }
 
-  const events = querySnapshot.docs.map(doc => {
+  const events = querySnapshot.docs.map((doc) => {
     const eventData = doc.data();
-    const participantCount = eventData.participants.length;  // Get participant count
+    const participantCount = eventData.participants.length; // Get participant count
     return {
       id: doc.id,
       event_name: eventData.event_name,
@@ -158,143 +168,154 @@ app.get('/search', async (req, res) => {
 });
 
 // Route to get event and project details
-app.get('/event-details', async (req, res) => {
-  const eventId = req.query.eventId;  // Event ID passed as a query parameter
+app.get("/event-details", async (req, res) => {
+  const eventId = req.query.eventId; // Event ID passed as a query parameter
 
   try {
     // Fetch the event data (name, ID, start/end dates)
-    const eventRef = db.collection('events').doc(eventId);
+    const eventRef = db.collection("events").doc(eventId);
     const eventDoc = await eventRef.get();
 
     if (!eventDoc.exists) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(404).json({ message: "Event not found" });
     }
 
     const eventData = eventDoc.data();
+    console.log(eventData);
 
     // Fetch the list of projects associated with the event
-    const projectsRef = eventRef.collection('projects');
-    const projectSnapshot = await projectsRef.get();
+    const projectsRef = db.collection("projects");
+    const projectSnapshot = await projectsRef
+      .where("eventId", "==", eventId)
+      .get();
 
     if (projectSnapshot.empty) {
-      return res.status(404).json({ message: 'No projects found for this event' });
+      return res
+        .status(404)
+        .json({ message: "No projects found for this event" });
     }
 
-    const projects = projectSnapshot.docs.map(doc => {
+    const projects = projectSnapshot.docs.map((doc) => {
       const projectData = doc.data();
 
       // Determine the color based on the status of the project
-      const statusColor = projectData.status === 'Published' ? 'green' : 'red';
+      const statusColor = projectData.status === "Published" ? "green" : "red";
 
       return {
         id: doc.id,
-        project_name: projectData.project_name,
+        project_name: projectData.name,
         grade: projectData.grade,
-        status: projectData.status,  // "Published" or "Not Published"
-        statusColor: statusColor,    // Green or Red for the frontend
-        submission_date: projectData.submission_date.toDate(),
+        published: projectData.status, // "Published" or "Not Published"
       };
     });
 
     // Send the response with event data and projects
     res.status(200).json({
-      event_name: eventData.event_name,
+      event_name: eventData.name,
       event_id: eventId,
-      start_date: eventData.start_date.toDate(),
-      end_date: eventData.end_date.toDate(),
+      start_date: eventData.startDate.toDate(),
+      end_date: eventData.endDate.toDate(),
       projects: projects,
     });
   } catch (error) {
-    console.error('Error fetching event details:', error);
-    res.status(500).json({ message: 'Error retrieving event details' });
+    console.error("Error fetching event details:", error);
+    res.status(500).json({ message: "Error retrieving event details" });
   }
 });
 
 // Route to get event and project details
-app.get('/project-details', async (req, res) => {
-  const { eventId, projectId } = req.query;  // Event and Project ID passed as query parameters
+app.get("/project-details", async (req, res) => {
+  const { eventId, projectId } = req.query; // Event and Project ID passed as query parameters
 
   try {
     // Fetch the event data (name, ID, start/end dates)
-    const eventRef = db.collection('events').doc(eventId);
+    const eventRef = db.collection("events").doc(eventId);
     const eventDoc = await eventRef.get();
 
     if (!eventDoc.exists) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(404).json({ message: "Event not found" });
     }
 
     const eventData = eventDoc.data();
 
     // Fetch the project data
-    const projectRef = eventRef.collection('projects').doc(projectId);
+    const projectRef = db.collection("projects").doc(projectId);
     const projectDoc = await projectRef.get();
 
     if (!projectDoc.exists) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     const projectData = projectDoc.data();
 
     // Send the event and project data as response
     res.status(200).json({
-      event_name: eventData.event_name,
+      event_name: eventData.name,
       event_id: eventId,
-      start_date: eventData.start_date.toDate(),
-      end_date: eventData.end_date.toDate(),
+      start_date: eventData.startDate.toDate(),
+      end_date: eventData.endDate.toDate(),
       project: {
-        project_name: projectData.project_name,
+        project_name: projectData.name,
         category: projectData.category,
-        participant_name: projectData.participant_name,
-        telephone: projectData.telephone,
+        participant_name: projectData.participantName,
+        phone: projectData.phone,
         description: projectData.description,
         link: projectData.link,
         grade: projectData.grade,
         status: projectData.status,
-        submitted: projectData.submitted,
+        published: projectData.published,
       },
     });
   } catch (error) {
-    console.error('Error fetching project details:', error);
-    res.status(500).json({ message: 'Error retrieving project details' });
+    console.error("Error fetching project details:", error);
+    res.status(500).json({ message: "Error retrieving project details" });
   }
 });
 
 // Route to publish the project
-app.post('/publish', async (req, res) => {
-  const { eventId, projectId } = req.body;  // Event and Project ID passed in the request body
+app.post("/publish", async (req, res) => {
+  const { eventId, projectId } = req.body; // Event and Project ID passed in the request body
 
   try {
     // Fetch the project document
-    const projectRef = db.collection('events').doc(eventId).collection('projects').doc(projectId);
+    const projectRef = db
+      .collection("events")
+      .doc(eventId)
+      .collection("projects")
+      .doc(projectId);
     const projectDoc = await projectRef.get();
 
     if (!projectDoc.exists) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     // Update the project status to "Published"
     await projectRef.update({
-      status: 'Published',
+      status: "Published",
     });
 
-    res.status(200).json({ message: 'Project published successfully' });
+    res.status(200).json({ message: "Project published successfully" });
   } catch (error) {
-    console.error('Error publishing project:', error);
-    res.status(500).json({ message: 'Error publishing project' });
+    console.error("Error publishing project:", error);
+    res.status(500).json({ message: "Error publishing project" });
   }
 });
 
 // Route to submit the project
-app.post('/submit', async (req, res) => {
-  const { eventId, projectId, grade } = req.body;  // Event and Project ID along with the grade
+app.post("/submit", async (req, res) => {
+  const { eventId, projectId, grade } = req.body; // Event and Project ID along with the grade
 
   try {
     // Fetch the project document
-    const projectRef = db.collection('events').doc(eventId).collection('projects').doc(projectId);
+    const projectRef = db
+      .collection("events")
+      .doc(eventId)
+      .collection("projects")
+      .doc(projectId);
     const projectDoc = await projectRef.get();
 
     if (!projectDoc.exists) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     // Update the project with the grade and mark it as submitted
@@ -303,37 +324,41 @@ app.post('/submit', async (req, res) => {
       submitted: true,
     });
 
-    res.status(200).json({ message: 'Project submitted successfully' });
+    res.status(200).json({ message: "Project submitted successfully" });
   } catch (error) {
-    console.error('Error submitting project:', error);
-    res.status(500).json({ message: 'Error submitting project' });
+    console.error("Error submitting project:", error);
+    res.status(500).json({ message: "Error submitting project" });
   }
 });
 
 // Multer setup for handling image uploads
-const storageConfig = multer.memoryStorage();  // Store files in memory
+const storageConfig = multer.memoryStorage(); // Store files in memory
 const upload = multer({
   storage: storageConfig,
   fileFilter: (req, file, cb) => {
     const fileExtension = path.extname(file.originalname).toLowerCase();
-    if (fileExtension === '.jpg' || fileExtension === '.jpeg' || fileExtension === '.png') {
-      cb(null, true);  // Accept image files
+    if (
+      fileExtension === ".jpg" ||
+      fileExtension === ".jpeg" ||
+      fileExtension === ".png"
+    ) {
+      cb(null, true); // Accept image files
     } else {
-      cb(new Error('Only image files are allowed!'), false);
+      cb(new Error("Only image files are allowed!"), false);
     }
   },
 });
 
 // Route to get user details
-app.get('/profile', async (req, res) => {
-  const userId = req.query.userId;  // User ID passed as a query parameter
+app.get("/profile", async (req, res) => {
+  const userId = req.query.userId; // User ID passed as a query parameter
 
   try {
-    const userRef = db.collection('users').doc(userId);
+    const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const userData = userDoc.data();
@@ -343,115 +368,143 @@ app.get('/profile', async (req, res) => {
       telephone: userData.telephone,
       email: userData.email,
       role: userData.role,
-      profile_picture_url: userData.profile_picture_url || '',
+      profile_picture_url: userData.profile_picture_url || "",
     });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ message: 'Error retrieving user profile' });
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ message: "Error retrieving user profile" });
   }
 });
 
 // Route to update user details
-app.post('/update-profile', upload.single('profile_picture'), async (req, res) => {
-  const { userId, firstName, lastName, telephone, email, role } = req.body;
-  const profilePicture = req.file;
+app.post(
+  "/update-profile",
+  upload.single("profile_picture"),
+  async (req, res) => {
+    const { userId, firstName, lastName, telephone, email, role } = req.body;
+    const profilePicture = req.file;
 
-  try {
-    // Upload the profile picture to Firebase Storage if a new one is provided
-    let profilePictureUrl = '';
-    if (profilePicture) {
-      const fileName = `${userId}_${Date.now()}${path.extname(profilePicture.originalname)}`;
-      const file = storage.file(fileName);
-      const stream = file.createWriteStream({
-        metadata: {
-          contentType: profilePicture.mimetype,
-        },
+    try {
+      // Upload the profile picture to Firebase Storage if a new one is provided
+      let profilePictureUrl = "";
+      if (profilePicture) {
+        const fileName = `${userId}_${Date.now()}${path.extname(
+          profilePicture.originalname
+        )}`;
+        const file = storage.file(fileName);
+        const stream = file.createWriteStream({
+          metadata: {
+            contentType: profilePicture.mimetype,
+          },
+        });
+
+        stream.on("error", (err) => {
+          console.error("Error uploading profile picture:", err);
+          return res
+            .status(500)
+            .json({ message: "Error uploading profile picture" });
+        });
+
+        stream.on("finish", async () => {
+          profilePictureUrl = `https://storage.googleapis.com/${storage.name}/${fileName}`; // Get the public URL of the uploaded file
+          await file.makePublic(); // Make the file publicly accessible
+        });
+
+        stream.end(profilePicture.buffer);
+      }
+
+      // Update user data in Firestore
+      const userRef = db.collection("users").doc(userId);
+      await userRef.update({
+        first_name: firstName,
+        last_name: lastName,
+        telephone: telephone,
+        email: email,
+        role: role,
+        profile_picture_url: profilePictureUrl, // Update the profile picture URL if it was uploaded
+        updated_at: admin.firestore.Timestamp.now(),
       });
 
-      stream.on('error', (err) => {
-        console.error('Error uploading profile picture:', err);
-        return res.status(500).json({ message: 'Error uploading profile picture' });
-      });
-
-      stream.on('finish', async () => {
-        profilePictureUrl = `https://storage.googleapis.com/${storage.name}/${fileName}`;  // Get the public URL of the uploaded file
-        await file.makePublic();  // Make the file publicly accessible
-      });
-
-      stream.end(profilePicture.buffer);
+      res.status(200).json({ message: "Profile updated successfully" });
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Error updating profile" });
     }
-
-    // Update user data in Firestore
-    const userRef = db.collection('users').doc(userId);
-    await userRef.update({
-      first_name: firstName,
-      last_name: lastName,
-      telephone: telephone,
-      email: email,
-      role: role,
-      profile_picture_url: profilePictureUrl,  // Update the profile picture URL if it was uploaded
-      updated_at: admin.firestore.Timestamp.now(),
-    });
-
-    res.status(200).json({ message: 'Profile updated successfully' });
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    res.status(500).json({ message: 'Error updating profile' });
   }
-});
+);
 
 // Route to create a new event
-app.post('/create-event', async (req, res) => {
-  const { eventName, startDate, endDate, location, numParticipants, judges, criteria } = req.body;
+app.post("/create-event", async (req, res) => {
+  const {
+    eventName,
+    startDate,
+    endDate,
+    location,
+    numParticipants,
+    judges,
+    criteria,
+  } = req.body;
 
   // Validate required fields
-  if (!eventName || !startDate || !endDate || !location || numParticipants == null || !judges || !criteria) {
-    return res.status(400).json({ message: 'All fields are required' });
+  if (
+    !eventName ||
+    !startDate ||
+    !endDate ||
+    !location ||
+    numParticipants == null ||
+    !judges ||
+    !criteria
+  ) {
+    return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
     // Create a new event in Firestore
-    const eventRef = db.collection('events').doc();  // Generate a new event ID automatically
+    const eventRef = db.collection("events").doc(); // Generate a new event ID automatically
     await eventRef.set({
       event_name: eventName,
       start_date: admin.firestore.Timestamp.fromDate(new Date(startDate)),
       end_date: admin.firestore.Timestamp.fromDate(new Date(endDate)),
       location: location,
       num_participants: numParticipants,
-      judges: judges,  // judges should be an array of judge IDs or names
+      judges: judges, // judges should be an array of judge IDs or names
       criteria: criteria,
       created_at: admin.firestore.Timestamp.now(),
       updated_at: admin.firestore.Timestamp.now(),
     });
 
-    res.status(201).json({ message: 'Event created successfully', eventId: eventRef.id });
+    res
+      .status(201)
+      .json({ message: "Event created successfully", eventId: eventRef.id });
   } catch (error) {
-    console.error('Error creating event:', error);
-    res.status(500).json({ message: 'Error creating event' });
+    console.error("Error creating event:", error);
+    res.status(500).json({ message: "Error creating event" });
   }
 });
 
 // Route to get all projects for an event
-app.get('/projects', async (req, res) => {
-  const eventId = req.query.eventId;  // Event ID passed as a query parameter
+app.get("/projects", async (req, res) => {
+  const eventId = req.query.eventId; // Event ID passed as a query parameter
 
   try {
-    const eventRef = db.collection('events').doc(eventId);
+    const eventRef = db.collection("events").doc(eventId);
     const eventDoc = await eventRef.get();
 
     if (!eventDoc.exists) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(404).json({ message: "Event not found" });
     }
 
     // Fetch projects under the event
-    const projectsRef = eventRef.collection('projects');
+    const projectsRef = eventRef.collection("projects");
     const projectSnapshot = await projectsRef.get();
 
     if (projectSnapshot.empty) {
-      return res.status(404).json({ message: 'No projects found for this event' });
+      return res
+        .status(404)
+        .json({ message: "No projects found for this event" });
     }
 
-    const projects = projectSnapshot.docs.map(doc => {
+    const projects = projectSnapshot.docs.map((doc) => {
       const projectData = doc.data();
       return {
         id: doc.id,
@@ -465,47 +518,60 @@ app.get('/projects', async (req, res) => {
 
     res.status(200).json({ projects });
   } catch (error) {
-    console.error('Error fetching projects:', error);
-    res.status(500).json({ message: 'Error retrieving projects' });
+    console.error("Error fetching projects:", error);
+    res.status(500).json({ message: "Error retrieving projects" });
   }
 });
 
 // Route to delete a project by its ID
-app.delete('/delete-project', async (req, res) => {
+app.delete("/delete-project", async (req, res) => {
   const { eventId, projectId } = req.body;
 
   try {
-    const projectRef = db.collection('events').doc(eventId).collection('projects').doc(projectId);
+    const projectRef = db
+      .collection("events")
+      .doc(eventId)
+      .collection("projects")
+      .doc(projectId);
     const projectDoc = await projectRef.get();
 
     if (!projectDoc.exists) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ message: "Project not found" });
     }
 
     // Delete the project
     await projectRef.delete();
 
-    res.status(200).json({ message: 'Project deleted successfully' });
+    res.status(200).json({ message: "Project deleted successfully" });
   } catch (error) {
-    console.error('Error deleting project:', error);
-    res.status(500).json({ message: 'Error deleting project' });
+    console.error("Error deleting project:", error);
+    res.status(500).json({ message: "Error deleting project" });
   }
 });
 
 // Route to add a new project to an event
-app.post('/add-project', async (req, res) => {
-  const { eventId, projectName, category, participantName, telephone, description, link, grade } = req.body;
+app.post("/add-project", async (req, res) => {
+  const {
+    eventId,
+    projectName,
+    category,
+    participantName,
+    telephone,
+    description,
+    link,
+    grade,
+  } = req.body;
 
   try {
-    const eventRef = db.collection('events').doc(eventId);
+    const eventRef = db.collection("events").doc(eventId);
     const eventDoc = await eventRef.get();
 
     if (!eventDoc.exists) {
-      return res.status(404).json({ message: 'Event not found' });
+      return res.status(404).json({ message: "Event not found" });
     }
 
     // Add new project to Firestore
-    const newProjectRef = eventRef.collection('projects').doc();  // Generate a new project ID
+    const newProjectRef = eventRef.collection("projects").doc(); // Generate a new project ID
     await newProjectRef.set({
       project_name: projectName,
       category: category,
@@ -514,15 +580,18 @@ app.post('/add-project', async (req, res) => {
       description: description,
       link: link,
       grade: grade,
-      status: "Not Published",  // Default status
+      status: "Not Published", // Default status
       submission_date: admin.firestore.Timestamp.now(),
-      criteria: "Criteria to be defined",  // Placeholder for criteria
+      criteria: "Criteria to be defined", // Placeholder for criteria
     });
 
-    res.status(201).json({ message: 'Project created successfully', projectId: newProjectRef.id });
+    res.status(201).json({
+      message: "Project created successfully",
+      projectId: newProjectRef.id,
+    });
   } catch (error) {
-    console.error('Error creating project:', error);
-    res.status(500).json({ message: 'Error creating project' });
+    console.error("Error creating project:", error);
+    res.status(500).json({ message: "Error creating project" });
   }
 });
 

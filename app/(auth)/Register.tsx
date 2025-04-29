@@ -75,6 +75,7 @@ const RegisterScreen = () => {
           if (response.status === 201) {
             console.log(response.data);
             Alert.alert("Success", "Registered successfully.");
+            router.replace("/(tabs)/Home");
           } else {
             Alert.alert(
               "Error",
