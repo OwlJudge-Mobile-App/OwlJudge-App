@@ -13,18 +13,7 @@ import { useEffect, useState } from "react";
 import BottomNav from "@/components/BottomNav";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import api from "@/services/api";
-
-const projects = [
-  { id: "1", name: "Project 1", grade: 0.5, published: true },
-  { id: "2", name: "Project 2", grade: 0.7, published: false },
-  { id: "3", name: "Project 3", grade: 0.6, published: false },
-  { id: "4", name: "Project 4", grade: 0.4, published: false },
-  { id: "5", name: "Project 5", grade: 0.1, published: false },
-  { id: "6", name: "Project 6", grade: 0.1, published: false },
-  { id: "7", name: "Project 7", grade: 0.1, published: false },
-  { id: "8", name: "Project 8", grade: 0.1, published: false },
-  { id: "9", name: "Project 9", grade: 0.1, published: false },
-];
+import * as Progress from "react-native-progress";
 
 export default function EventDetailsScreen() {
   const router = useRouter();
@@ -44,6 +33,7 @@ export default function EventDetailsScreen() {
         });
 
         setEventData(response.data);
+
         setProjects(response.data.projects);
       } catch (error) {
         console.error("Error fetching event details:", error);
@@ -51,6 +41,7 @@ export default function EventDetailsScreen() {
         setLoading(false);
       }
     };
+    console.log(eventData);
 
     fetchEventDetails();
   }, []);
@@ -73,20 +64,22 @@ export default function EventDetailsScreen() {
     >
       <View style={styles.projectRow}>
         <Text style={[styles.cell, { flex: 2 }]}>{item.project_name}</Text>
-        <ProgressBarAndroid
-          styleAttr="Horizontal"
-          indeterminate={false}
-          progress={item.grade}
-          style={styles.progressBar}
+        <Progress.Bar
+          progress={item.grade / 100}
+          width={null}
           color="#4169E1"
+          unfilledColor="#ccc"
+          borderWidth={0}
+          height={10}
+          style={styles.progressBar}
         />
+
         <View style={(styles.cell, [{ flex: 1, alignItems: "center" }])}>
           <View
             style={[
               styles.statusDot,
               {
-                backgroundColor:
-                  item.published === "Published" ? "green" : "red",
+                backgroundColor: item.published === true ? "green" : "red",
               },
             ]}
           />

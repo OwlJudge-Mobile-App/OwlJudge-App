@@ -87,7 +87,7 @@ export default function HomeScreen() {
       </View>
       <View style={styles.participantBox}>
         <Text style={styles.participantText}>
-          {item.participants} Participant
+          {item.participants} Participants
         </Text>
       </View>
     </TouchableOpacity>

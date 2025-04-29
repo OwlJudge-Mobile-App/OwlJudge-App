@@ -114,9 +114,9 @@ app.get("/home", async (req, res) => {
     .where("judgeIds", "array-contains", userId)
     .get();
 
-  if (querySnapshot.empty) {
-    return res.status(404).json({ message: "No events found" });
-  }
+  // if (querySnapshot.empty) {
+  //   return res.status(404).json({ message: "No events found" });
+  // }
 
   const events = querySnapshot.docs.map((doc) => {
     const eventData = doc.data();
@@ -189,23 +189,20 @@ app.get("/event-details", async (req, res) => {
       .where("eventId", "==", eventId)
       .get();
 
-    if (projectSnapshot.empty) {
-      return res
-        .status(404)
-        .json({ message: "No projects found for this event" });
-    }
+    // if (projectSnapshot.empty) {
+    //   return res
+    //     .status(404)
+    //     .json({ message: "No projects found for this event" });
+    // }
 
     const projects = projectSnapshot.docs.map((doc) => {
       const projectData = doc.data();
-
-      // Determine the color based on the status of the project
-      const statusColor = projectData.status === "Published" ? "green" : "red";
 
       return {
         id: doc.id,
         project_name: projectData.name,
         grade: projectData.grade,
-        published: projectData.status, // "Published" or "Not Published"
+        published: projectData.published, // "Published" or "Not Published"
       };
     });
 
@@ -274,15 +271,11 @@ app.get("/project-details", async (req, res) => {
 
 // Route to publish the project
 app.post("/publish", async (req, res) => {
-  const { eventId, projectId } = req.body; // Event and Project ID passed in the request body
+  const { projectId, grade } = req.body; // Event and Project ID passed in the request body
 
   try {
     // Fetch the project document
-    const projectRef = db
-      .collection("events")
-      .doc(eventId)
-      .collection("projects")
-      .doc(projectId);
+    const projectRef = db.collection("projects").doc(projectId);
     const projectDoc = await projectRef.get();
 
     if (!projectDoc.exists) {
@@ -291,7 +284,8 @@ app.post("/publish", async (req, res) => {
 
     // Update the project status to "Published"
     await projectRef.update({
-      status: "Published",
+      grade: grade,
+      published: true,
     });
 
     res.status(200).json({ message: "Project published successfully" });

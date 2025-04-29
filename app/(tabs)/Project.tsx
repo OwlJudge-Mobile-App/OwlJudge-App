@@ -5,8 +5,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useNavigation } from "expo-router";
 import { ProgressBarAndroid } from "react-native";
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useState } from "react";
@@ -14,6 +15,7 @@ import api from "@/services/api";
 import Slider from "@react-native-community/slider";
 
 export default function ProjectDetailsScreen() {
+  const navigation = useNavigation();
   const { id: eventId, project_id: projectId } = useLocalSearchParams();
 
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,26 @@ export default function ProjectDetailsScreen() {
   const [projectData, setProjectData] = useState<any>(null);
 
   const [grade, setGrade] = useState<number>(0); // initial grade
+  const [isPublished, setIsPublished] = useState(false);
+
+  const handlePublish = async () => {
+    if (isPublished) return; // Safety check
+    console.log(projectId, grade);
+
+    try {
+      await api.post("/publish", {
+        projectId,
+        grade,
+      });
+
+      setIsPublished(true); // update state locally
+      Alert.alert("Success", "Project has been published.");
+      navigation.goBack();
+    } catch (error) {
+      console.error("Publish error:", error);
+      Alert.alert("Error", "Failed to publish project.");
+    }
+  };
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -36,6 +58,7 @@ export default function ProjectDetailsScreen() {
         });
         setProjectData(response.data.project);
         setGrade(response.data.project.grade ?? 0);
+        setIsPublished(response.data.project.published);
       } catch (error) {
         console.error("Error fetching project details", error);
       } finally {
@@ -44,6 +67,13 @@ export default function ProjectDetailsScreen() {
     };
 
     fetchProjectDetails();
+  }, []);
+
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: true,
+      gestureDirection: "horizontal",
+    });
   }, []);
 
   if (loading) {
@@ -86,7 +116,7 @@ export default function ProjectDetailsScreen() {
             <Slider
               style={{ width: "100%", height: 40 }}
               minimumValue={0}
-              maximumValue={1}
+              maximumValue={100}
               step={5}
               value={grade}
               minimumTrackTintColor="#4169E1"
@@ -96,9 +126,19 @@ export default function ProjectDetailsScreen() {
           </View>
           {/* Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.publishButton}>
-              <Text style={styles.buttonText}>Publish</Text>
+            <TouchableOpacity
+              style={[
+                styles.publishButton,
+                isPublished && { backgroundColor: "#aaa" }, // gray out if already published
+              ]}
+              onPress={handlePublish}
+              disabled={isPublished}
+            >
+              <Text style={styles.buttonText}>
+                {isPublished ? "Already Published" : "Publish"}
+              </Text>
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.submitButton}>
               <Text style={styles.buttonText}>Submit</Text>
             </TouchableOpacity>
