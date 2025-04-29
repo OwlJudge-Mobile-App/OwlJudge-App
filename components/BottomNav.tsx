@@ -11,13 +11,13 @@ export default function BottomNav() {
           source={require("../assets/images/home-icon.png")}
         />
       </TouchableOpacity>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={() => router.replace("/(tabs)/Account")}>
         <Image
           style={styles.navIcon}
           source={require("../assets/images/icons8-account-100.png")}
         />
       </TouchableOpacity>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={() => router.replace("/(tabs)/Help")}>
         <Image
           style={styles.navIcon}
           source={require("../assets/images/help-252.png")}
@@ -34,6 +34,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: 70,
     backgroundColor: "#D3D3D3",
+    width: "100%",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   navIcon: {
     width: 30,
