@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
+import BottomNav from "@/components/BottomNav";
+import { useRouter } from "expo-router";
 
 const projects = [
   { id: "1", name: "Project 1", grade: 0.5, published: true },
@@ -24,6 +26,7 @@ const projects = [
 ];
 
 export default function EventDetailsScreen() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
 
   const filteredProjects = projects.filter((proj) =>
@@ -31,22 +34,40 @@ export default function EventDetailsScreen() {
   );
 
   const renderProject = ({ item }: { item: (typeof projects)[0] }) => (
-    <View style={styles.projectRow}>
-      <Text style={styles.projectName}>{item.name}</Text>
-      <ProgressBarAndroid
-        styleAttr="Horizontal"
-        indeterminate={false}
-        progress={item.grade}
-        style={styles.progressBar}
-        color="#4169E1"
-      />
-      <View
-        style={[
-          styles.statusDot,
-          { backgroundColor: item.published ? "green" : "red" },
-        ]}
-      />
-    </View>
+    <TouchableOpacity
+      onPress={() => {
+        router.push({
+          pathname: "/(tabs)/Project",
+          params: {
+            name: item.name,
+            category: "Programming", // I will make it dynamic later
+            participant: "Roan Simo Masso",
+            phone: "4704399907",
+            description: "This is a sample project description...",
+            link: "https://www.youtube.com/watch?v=jKl0a__yCZE",
+          },
+        });
+      }}
+    >
+      <View style={styles.projectRow}>
+        <Text style={[styles.cell, { flex: 2 }]}>{item.name}</Text>
+        <ProgressBarAndroid
+          styleAttr="Horizontal"
+          indeterminate={false}
+          progress={item.grade}
+          style={styles.progressBar}
+          color="#4169E1"
+        />
+        <View style={(styles.cell, [{ flex: 1, alignItems: "center" }])}>
+          <View
+            style={[
+              styles.statusDot,
+              { backgroundColor: item.published ? "green" : "red" },
+            ]}
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -62,7 +83,6 @@ export default function EventDetailsScreen() {
           <Text style={styles.eventDates}>- 03/24/2025</Text>
         </View>
       </View>
-
       {/* Buttons */}
       <View style={styles.topButtons}>
         <TouchableOpacity style={styles.criteriaButton}>
@@ -78,14 +98,12 @@ export default function EventDetailsScreen() {
           <Ionicons name="search" size={20} color="gray" />
         </View>
       </View>
-
       {/* List Header */}
-      <View style={styles.listHeader}>
-        <Text style={styles.headerText}>Project name</Text>
-        <Text style={styles.headerText}>Grade</Text>
-        <Text style={styles.headerText}>Published</Text>
+      <View style={[styles.projectRow, styles.listHeader]}>
+        <Text style={[styles.headerCell, { flex: 2 }]}>Project Name</Text>
+        <Text style={[styles.headerCell, { flex: 3 }]}>Grade</Text>
+        <Text style={[styles.headerCell, { flex: 1 }]}>Published</Text>
       </View>
-
       {/* Project List */}
       <FlatList
         data={filteredProjects}
@@ -93,6 +111,8 @@ export default function EventDetailsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
       />
+      {/* Bottom Navigation */}
+      <BottomNav />
     </View>
   );
 }
@@ -104,6 +124,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
     backgroundColor: "#D3D3D3",
+    paddingBottom: 30,
   },
   eventTitle: {
     fontSize: 18,
@@ -122,7 +143,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 10,
-    marginVertical: 10,
+    marginVertical: 20,
   },
   criteriaButton: {
     backgroundColor: "#A9A9A9",
@@ -149,40 +170,42 @@ const styles = StyleSheet.create({
     fontFamily: "IrishGrover-Regular",
   },
   listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  headerText: {
-    fontFamily: "IrishGrover-Regular",
-    color: "white",
-    fontSize: 14,
-  },
-  listContent: {
+    backgroundColor: "#505050",
+    paddingVertical: 8,
     paddingHorizontal: 10,
+    borderBottomColor: "white",
+    borderBottomWidth: 2,
+  },
+  headerCell: {
+    color: "white",
+    fontFamily: "IrishGrover-Regular",
+    fontSize: 14,
   },
   projectRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderBottomColor: "white",
     borderBottomWidth: 1,
   },
-  projectName: {
-    flex: 2,
+  cell: {
     fontFamily: "IrishGrover-Regular",
+    fontSize: 14,
     color: "white",
   },
+  progressContainer: {},
   progressBar: {
     flex: 3,
     height: 10,
-    marginHorizontal: 10,
+    marginRight: 10,
   },
   statusDot: {
     width: 15,
     height: 15,
-    borderRadius: 10,
+    borderRadius: 7.5,
+  },
+  listContent: {
+    flex: 1,
   },
 });

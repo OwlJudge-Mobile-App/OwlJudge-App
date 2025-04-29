@@ -1,3 +1,4 @@
+import BottomNav from "@/components/BottomNav";
 import { Fonts } from "@/constants/Fonts";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -93,26 +94,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity>
-          <Image
-            style={styles.navIcon}
-            source={require("../../assets/images/home-icon.png")}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Image
-            style={styles.navIcon}
-            source={require("../../assets/images/edit-icon.png")}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Image
-            style={styles.navIcon}
-            source={require("../../assets/images/help-252.png")}
-          />
-        </TouchableOpacity>
-      </View>
+      <BottomNav />
     </View>
   );
 }
